@@ -1,0 +1,7 @@
+node_modules
+dist
+.redis-cache
+.env
+*.local
+.git
+.claude

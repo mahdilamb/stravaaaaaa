@@ -1,0 +1,340 @@
+.timeline {
+  grid-area: timeline;
+  background: #16213e;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  z-index: 1000;
+  border-top: 1px solid #2a2a4a;
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  gap: 0.5rem;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.timeline-controls-spacer {
+  flex: 1;
+}
+
+.timeline-play-btn {
+  width: 32px;
+  height: 32px;
+  background: #fc4c02;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.timeline-play-btn:hover {
+  background: #e04400;
+}
+
+.timeline-play-btn.muted {
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+.timeline-play-btn.muted:hover {
+  opacity: 1;
+}
+
+.timeline-reset-btn {
+  width: 28px;
+  height: 28px;
+  background: #252545;
+  color: #999;
+  border: 1px solid #3a3a5a;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.timeline-reset-btn:hover {
+  color: #ddd;
+  border-color: #5a5a8a;
+}
+
+.timeline-mode-btn {
+  width: 28px;
+  height: 28px;
+  background: #252545;
+  color: #999;
+  border: 1px solid #3a3a5a;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.timeline-mode-btn:hover {
+  color: #ddd;
+  border-color: #5a5a8a;
+}
+
+.timeline-mode-btn.active {
+  background: #fc4c02;
+  color: white;
+  border-color: #fc4c02;
+}
+
+.timeline-track-container {
+  width: 100%;
+  position: relative;
+  height: 36px;
+  cursor: pointer;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+.timeline-date-markers {
+  position: absolute;
+  top: 0;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.timeline-marker {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-marker-tick {
+  width: 1px;
+  height: 100%;
+  background: #3a3a5a;
+  position: absolute;
+  top: 0;
+}
+
+.timeline-marker-label {
+  position: absolute;
+  bottom: 1px;
+  font-size: 0.55rem;
+  color: #666;
+  white-space: nowrap;
+  user-select: none;
+  transition: color 0.3s;
+}
+
+.timeline-marker.past .timeline-marker-tick {
+  background: #7a7aaa;
+}
+
+.timeline-marker.past .timeline-marker-label {
+  color: #bbb;
+}
+
+/* Visible track background (behind everything) */
+.timeline-track-bar {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  right: 1rem;
+  height: 6px;
+  background: #2a2a4a;
+  border-radius: 3px;
+  z-index: 0;
+  transform: translateY(-50%);
+}
+
+/* Thumb track (same inset as dots so % positions align) */
+.timeline-thumb-track {
+  position: absolute;
+  top: 0;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Custom thumb positioned by time */
+.timeline-thumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  background: transparent;
+  border: 2.5px solid #fc4c02;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Activity dots (between track bar and slider thumb) */
+.timeline-dots {
+  position: absolute;
+  top: 0;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.timeline-dot {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.25;
+  pointer-events: auto;
+  transition: width 0.15s, height 0.15s, opacity 0.15s;
+}
+
+.timeline-dot:hover {
+  width: 10px;
+  height: 10px;
+  opacity: 1;
+}
+
+.timeline-dot.active {
+  width: 7px;
+  height: 7px;
+  opacity: 0.7;
+}
+
+.timeline-tooltip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.timeline-speed {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.speed-btn {
+  padding: 2px 5px;
+  background: #252545;
+  color: #999;
+  border: 1px solid #3a3a5a;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.speed-btn:hover {
+  color: #ddd;
+  border-color: #5a5a8a;
+}
+
+.speed-btn.active {
+  background: #fc4c02;
+  color: white;
+  border-color: #fc4c02;
+}
+
+/* Record button */
+.timeline-record-btn {
+  width: 22px;
+  height: 22px;
+  background: #252545;
+  color: #999;
+  border: 1px solid #3a3a5a;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.timeline-record-btn:hover {
+  color: #ddd;
+  border-color: #5a5a8a;
+}
+
+.timeline-record-btn.recording {
+  background: #d32f2f;
+  color: white;
+  border-color: #d32f2f;
+  animation: pulse-record 1s ease-in-out infinite;
+}
+
+@keyframes pulse-record {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Show-all toggle button */
+.timeline-showall-btn {
+  width: 28px;
+  height: 28px;
+  background: #252545;
+  color: #999;
+  border: 1px solid #3a3a5a;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.timeline-showall-btn:hover {
+  color: #ddd;
+  border-color: #5a5a8a;
+}
+
+.timeline-showall-btn.active {
+  background: #fc4c02;
+  color: white;
+  border-color: #fc4c02;
+}
+
+/* Disabled states */
+.timeline-play-btn:disabled,
+.timeline-reset-btn:disabled,
+.timeline-mode-btn:disabled,
+.speed-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+}
+
+.timeline-track-container.disabled {
+  opacity: 0.4;
+}

@@ -1,0 +1,455 @@
+.sidebar {
+  grid-area: sidebar;
+  overflow: visible;
+  background: #1a1a2e;
+  z-index: 1000;
+  border-right: 1px solid #2a2a4a;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sidebar.collapsed {
+  overflow: visible;
+  background: transparent;
+  border-right: none;
+  width: 20px;
+  pointer-events: none;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  pointer-events: auto;
+  right: auto;
+  left: 0;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 40px;
+  background: transparent;
+  color: #999;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  padding: 0;
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.sidebar-toggle:hover {
+  color: #fff;
+}
+
+.sidebar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sidebar-header h1 {
+  font-size: 1.5rem;
+  color: #fc4c02;
+  margin-bottom: 0.25rem;
+}
+
+/* Color scheme dropdown */
+.scheme-dropdown {
+  position: relative;
+}
+
+.scheme-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.2s;
+}
+
+.scheme-dropdown-btn:hover {
+  border-color: #5a5a8a;
+  color: #ccc;
+}
+
+.scheme-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #252545;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 10;
+  min-width: 140px;
+}
+
+.scheme-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+
+.scheme-dropdown-item:hover {
+  background: #303060;
+}
+
+.scheme-dropdown-item.active {
+  background: #3a3a5a;
+}
+
+.scheme-dots {
+  display: flex;
+  gap: 1px;
+}
+
+.scheme-dot {
+  width: 5px;
+  height: 10px;
+  border-radius: 1px;
+}
+
+.scheme-label {
+  white-space: nowrap;
+}
+
+.sidebar-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.athlete-name {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.logout-btn {
+  padding: 0.25rem 0.75rem;
+  background: transparent;
+  color: #888;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  color: #eee;
+  border-color: #888;
+}
+
+/* Activity type selector */
+.type-buttons-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.type-buttons-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.type-buttons-row .type-btn {
+  flex: 1;
+}
+
+.type-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.type-btn {
+  padding: 0.5rem;
+  background: #252545;
+  color: #ccc;
+  border: 1px solid #3a3a5a;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.type-btn:hover {
+  background: #303060;
+  border-color: #5a5a8a;
+}
+
+.type-btn.active {
+  background: #fc4c02;
+  color: white;
+  border-color: #fc4c02;
+}
+
+.type-btn.excluded {
+  opacity: 0.35;
+}
+
+.type-badge {
+  display: inline-block;
+  margin-left: 0.3rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.type-btn.active .type-badge {
+  opacity: 0.9;
+}
+
+.type-visibility {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #999;
+}
+
+/* Date range */
+.date-level {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.date-chip {
+  padding: 0.3rem 0.6rem;
+  background: #252545;
+  color: #ccc;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.date-chip:hover:not(:disabled) {
+  background: #303060;
+  border-color: #5a5a8a;
+}
+
+.date-chip.active {
+  background: #fc4c02;
+  color: white;
+  border-color: #fc4c02;
+}
+
+.date-chip:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.date-chip-sm {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+}
+
+.date-chip-count {
+  font-size: 0.6rem;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.date-chip.active .date-chip-count {
+  opacity: 0.9;
+}
+
+.date-chip-custom {
+  font-style: italic;
+}
+
+.date-separator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0.15rem;
+}
+
+.date-separator::before,
+.date-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #3a3a5a;
+}
+
+.date-separator span {
+  font-size: 0.6rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.date-inputs {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.date-inputs label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.date-inputs input[type="date"] {
+  padding: 0.4rem;
+  background: #252545;
+  color: #eee;
+  border: 1px solid #3a3a5a;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.date-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
+
+/* Distance chips */
+.distance-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  padding: 0.35rem 0.85rem;
+  background: #252545;
+  color: #ccc;
+  border: 1px solid #3a3a5a;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  background: #303060;
+  border-color: #5a5a8a;
+}
+
+.chip.active {
+  background: #fc4c02;
+  color: white;
+  border-color: #fc4c02;
+}
+
+.chip-count {
+  font-size: 0.65rem;
+  opacity: 0.7;
+  font-weight: 600;
+  margin-left: 0.15rem;
+}
+
+.chip.active .chip-count {
+  opacity: 0.9;
+}
+
+.distance-empty {
+  font-size: 0.85rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Color legend */
+.color-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  flex-shrink: 0;
+  padding: 0.5rem 1.25rem;
+  border-top: 1px solid #2a2a4a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1a1a2e;
+}
+
+.activity-count {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.strava-powered {
+  display: flex;
+  align-items: center;
+}
+
+.strava-logo {
+  height: 24px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.strava-logo:hover {
+  opacity: 1;
+}
