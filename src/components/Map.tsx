@@ -3,70 +3,38 @@ import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, GeoJSON, Polyline, CircleMarker, Pane, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { LatLngExpression } from 'leaflet'
-import { feature } from 'topojson-client'
-import worldTopo from 'world-atlas/countries-110m.json'
 import type { Activity, ActivityCategory, ActivityFilterType } from '../types'
 import type { AnimationMode } from '../hooks/useTimeline'
 import type { MapLayer } from '../utils/hash'
 import { getActivityColor } from '../utils/colors'
 import { useColorScheme } from '../contexts/ColorSchemeContext'
 
-// Pre-convert TopoJSON to GeoJSON at module load — zero network requests
-// Filter out Antarctica (id 010) and polygons that cross the antimeridian (cause horizontal line artifacts)
-function fixAntimeridian(fc: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
-  function ringCrosses(ring: number[][]): boolean {
-    for (let i = 1; i < ring.length; i++) {
-      if (Math.abs(ring[i][0] - ring[i - 1][0]) > 180) return true
-    }
-    return false
-  }
-  function polyCrosses(coords: number[][][]): boolean {
-    return coords.some(ringCrosses)
-  }
-  return {
-    type: 'FeatureCollection',
-    features: fc.features.filter(f => {
-      if (f.id === '010') return false // Antarctica
-      const g = f.geometry
-      if (g.type === 'Polygon') return !polyCrosses(g.coordinates)
-      if (g.type === 'MultiPolygon') {
-        // Keep only polygon parts that don't cross
-        const clean = g.coordinates.filter(p => !polyCrosses(p))
-        if (clean.length === 0) return false
-        g.coordinates = clean
-      }
-      return true
-    }),
-  }
-}
-const countriesGeoJSON = fixAntimeridian(
-  feature(worldTopo as any, (worldTopo as any).objects.countries) as unknown as GeoJSON.FeatureCollection
-)
+export type BorderMode = 'dark' | 'light'
 
 const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; maxZoom?: number }[] = [
   {
     key: 'streets',
     label: 'Streets',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    url: '/api/tiles/osm/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
     key: 'satellite',
     label: 'Satellite',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    url: '/api/tiles/satellite/{z}/{x}/{y}.png',
     attribution: '&copy; Esri, Maxar, Earthstar Geographics',
     maxZoom: 19,
   },
   {
     key: 'toner',
     label: 'Land/Water',
-    url: 'https://tiles.stadiamaps.com/tiles/stamen_terrain_background/{z}/{x}/{y}{r}.png',
+    url: '/api/tiles/terrain/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://stamen.com/">Stamen Design</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   },
   {
     key: 'grey',
     label: 'Grey',
-    url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+    url: '/api/tiles/carto/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 20,
   },
@@ -74,7 +42,7 @@ const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; 
     key: 'borders',
     label: 'Borders',
     url: '',
-    attribution: '&copy; <a href="https://www.naturalearthdata.com/">Natural Earth</a>',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
   },
   {
     key: 'heatmap',
@@ -789,24 +757,20 @@ function LayerSwitcher({ active, onChange }: { active: MapLayer; onChange: (l: M
   )
 }
 
-const COUNTRY_STYLE: L.PathOptions = {
-  color: '#aaa',
-  weight: 1,
-  fillColor: '#1a1a2e',
-  fillOpacity: 1,
-  opacity: 0.8,
+function getBorderTileUrl(mode: BorderMode): string {
+  return `/api/tiles/carto-${mode}/{z}/{x}/{y}.png`
 }
 
-const COUNTRY_STYLE_HEATMAP: L.PathOptions = {
-  color: '#444',
+const CITY_BORDER_STYLE_DARK: L.PathOptions = {
+  color: '#888',
   weight: 0.8,
-  fillColor: '#1a1a2e',
-  fillOpacity: 1,
-  opacity: 0.6,
+  fill: false,
+  opacity: 0.7,
+  dashArray: '4 3',
 }
 
-const CITY_BORDER_STYLE: L.PathOptions = {
-  color: '#666',
+const CITY_BORDER_STYLE_LIGHT: L.PathOptions = {
+  color: '#555',
   weight: 0.8,
   fill: false,
   opacity: 0.7,
@@ -821,7 +785,7 @@ const CITY_BORDER_STYLE_HEATMAP: L.PathOptions = {
   dashArray: '4 3',
 }
 
-function CountryBorders({ cityBoundaries, isHeatmap }: { cityBoundaries: GeoJSON.FeatureCollection; isHeatmap: boolean }) {
+function BorderTiles({ cityBoundaries, isHeatmap, borderMode }: { cityBoundaries: GeoJSON.FeatureCollection; isHeatmap: boolean; borderMode: BorderMode }) {
   const polyBoundaries = useMemo((): GeoJSON.FeatureCollection => ({
     type: 'FeatureCollection',
     features: cityBoundaries.features.filter(f =>
@@ -829,19 +793,22 @@ function CountryBorders({ cityBoundaries, isHeatmap }: { cityBoundaries: GeoJSON
     ),
   }), [cityBoundaries])
 
-  const cityStyle = isHeatmap ? CITY_BORDER_STYLE_HEATMAP : CITY_BORDER_STYLE
-  const countryStyle = isHeatmap ? COUNTRY_STYLE_HEATMAP : COUNTRY_STYLE
-
-  const countryKey = `country-${isHeatmap ? 'hm' : 'std'}`
+  const cityStyle = isHeatmap ? CITY_BORDER_STYLE_HEATMAP : (borderMode === 'dark' ? CITY_BORDER_STYLE_DARK : CITY_BORDER_STYLE_LIGHT)
+  const tileUrl = getBorderTileUrl(isHeatmap ? 'dark' : borderMode)
 
   return (
     <>
       <Pane name="borders-pane" style={{ zIndex: 250 }}>
-        <GeoJSON key={countryKey} data={countriesGeoJSON} style={countryStyle} />
+        <TileLayer
+          key={`border-tiles-${isHeatmap ? 'dark' : borderMode}`}
+          url={tileUrl}
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>'
+          maxZoom={20}
+        />
       </Pane>
       {polyBoundaries.features.length > 0 && (
         <Pane name="city-borders-pane" style={{ zIndex: 251 }}>
-          <GeoJSON key={`city-${polyBoundaries.features.length}-${isHeatmap}`} data={polyBoundaries} style={() => cityStyle} />
+          <GeoJSON key={`city-${polyBoundaries.features.length}-${isHeatmap}-${borderMode}`} data={polyBoundaries} style={() => cityStyle} />
         </Pane>
       )}
     </>
@@ -899,6 +866,7 @@ interface Props {
   trailMode: boolean
   mode: AnimationMode
   layer: MapLayer
+  borderMode: BorderMode
   geocodeCache: Record<string, string>
   cityBoundaries: GeoJSON.FeatureCollection
   flyTarget?: { lat: number; lng: number; ts: number; bounds?: [[number, number], [number, number]] } | null
@@ -927,16 +895,16 @@ function getWeight(index: number, total: number, isAnimating: boolean, zoom: num
   const z = Math.min(Math.max(zoom, 2), 18)
   let scale: number
   if (z < 7) {
-    scale = 3.0 - ((z - 2) / 5) * 1.5
+    scale = 1.6 - ((z - 2) / 5) * .6
   } else if (z < 11) {
-    scale = 1.5 - ((z - 7) / 4) * 0.7
+    scale = .8 - ((z - 7) / 4) * 0.3
   } else {
-    scale = 0.8 - ((z - 11) / 7) * 0.5
+    scale = 0.4 - ((z - 11) / 7) * 0.1
   }
   return Math.max(0.3, base * scale)
 }
 
-export function ActivityMap({ activities, allActivities, activityType, distanceFilter, isAnimating, isPlaying, currentIndex, activityProgress, trailMode, mode, layer, geocodeCache, cityBoundaries, flyTarget, onLayerChange, onViewChange, onFlyStart, onFlyEnd, onPause, initialView, previewActivity }: Props) {
+export function ActivityMap({ activities, allActivities, activityType, distanceFilter, isAnimating, isPlaying, currentIndex, activityProgress, trailMode, mode, layer, borderMode, geocodeCache, cityBoundaries, flyTarget, onLayerChange, onViewChange, onFlyStart, onFlyEnd, onPause, initialView, previewActivity }: Props) {
   const activeLayer = LAYERS.find(l => l.key === layer)!
 
   const clusters = useMemo(() => clusterByCity(allActivities, geocodeCache), [allActivities, geocodeCache])
@@ -959,7 +927,7 @@ export function ActivityMap({ activities, allActivities, activityType, distanceF
           maxZoom={activeLayer.maxZoom}
         />
       )}
-      {(layer === 'borders' || layer === 'heatmap') && <CountryBorders cityBoundaries={cityBoundaries} isHeatmap={layer === 'heatmap'} />}
+      {(layer === 'borders' || layer === 'heatmap') && <BorderTiles cityBoundaries={cityBoundaries} isHeatmap={layer === 'heatmap'} borderMode={borderMode} />}
       {layer === 'heatmap' && (
         <HeatmapLayer
           activityType={activityType}

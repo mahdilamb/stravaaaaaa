@@ -12,6 +12,7 @@ import { COLOR_SCHEMES } from '../utils/constants'
 import type { ColorSchemeName } from '../utils/constants'
 import { ColorSchemeContext } from '../contexts/ColorSchemeContext'
 import { clusterByCity } from './Map'
+import type { BorderMode } from './Map'
 import { Sidebar } from './Sidebar'
 import { ActivityMap } from './Map'
 import { TimelineSlider } from './TimelineSlider'
@@ -38,6 +39,14 @@ export function App() {
   const [filters, setFilters] = useState<FilterState>(initialState.filters)
   const [mapLayer, setMapLayer] = useState<MapLayer>(initialState.layer ?? 'borders')
   const [colorScheme, setColorScheme] = useState<ColorSchemeName>(initialState.scheme ?? 'strava')
+  const [borderMode, setBorderMode] = useState<BorderMode>(() => {
+    try { return (localStorage.getItem('borderMode') as BorderMode) || 'dark' } catch { return 'dark' }
+  })
+  // Apply theme to document root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', borderMode)
+  }, [borderMode])
+
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mapView, setMapView] = useState<{ lat: number; lng: number; zoom: number } | undefined>(
     initialState.lat != null && initialState.lng != null && initialState.zoom != null
@@ -209,6 +218,8 @@ export function App() {
           animationCategory={timeline.animateEnabled && timeline.currentIndex > 0 && timeline.currentIndex <= filtered.length
             ? filtered[timeline.currentIndex - 1].category
             : null}
+          borderMode={borderMode}
+          onBorderModeChange={(m: BorderMode) => { setBorderMode(m); try { localStorage.setItem('borderMode', m) } catch {} }}
         />
         <div ref={mapContainerRef} style={{ gridArea: 'map', position: 'relative' }}>
           <ActivityMap
@@ -223,6 +234,7 @@ export function App() {
             trailMode={timeline.trailMode}
             mode={timeline.mode}
             layer={mapLayer}
+            borderMode={borderMode}
             geocodeCache={geocodeCache}
             cityBoundaries={cityBoundaries}
             flyTarget={flyTarget}
