@@ -6,7 +6,7 @@
 .leaflet-container {
   height: 100%;
   width: 100%;
-  background: #1a1a2e;
+  background: var(--leaflet-bg);
 }
 
 /* Top-right controls wrapper */
@@ -108,7 +108,7 @@
 }
 
 .layer-dropdown-item.active {
-  background: #fc4c02;
+  background: var(--accent);
   color: #fff;
 }
 

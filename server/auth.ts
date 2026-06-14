@@ -45,6 +45,8 @@ router.get('/callback', async (req: Request, res: Response) => {
     })
 
     if (!response.ok) {
+      const body = await response.text()
+      console.error(`[auth] Token exchange failed: ${response.status}`, body)
       throw new Error(`Token exchange failed: ${response.status}`)
     }
 
@@ -53,6 +55,13 @@ router.get('/callback', async (req: Request, res: Response) => {
 
     await cacheSet(`strava:token:${sessionId}`, tokens)
 
+    // Reverse mapping: athlete ID → session (for webhook cache invalidation)
+    if (tokens.athlete?.id) {
+      await cacheSet(`strava:athlete:${tokens.athlete.id}`, sessionId)
+    }
+
+    console.log(`[auth] Login successful for ${tokens.athlete?.firstname} ${tokens.athlete?.lastname}, session: ${sessionId}`)
+
     res.cookie('strava_session', sessionId, {
       httpOnly: true,
       sameSite: 'lax',
@@ -60,7 +69,8 @@ router.get('/callback', async (req: Request, res: Response) => {
     })
 
     res.redirect(process.env.FRONTEND_URL || 'http://localhost:5173')
-  } catch {
+  } catch (err) {
+    console.error('[auth] Callback error:', err)
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}?error=auth_failed`)
   }
 })

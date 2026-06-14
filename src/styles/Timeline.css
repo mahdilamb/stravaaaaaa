@@ -1,11 +1,11 @@
 .timeline {
   grid-area: timeline;
-  background: #16213e;
+  background: var(--bg-timeline);
   display: flex;
   flex-direction: column;
   padding: 0;
   z-index: 1000;
-  border-top: 1px solid #2a2a4a;
+  border-top: 1px solid var(--border);
 }
 
 .timeline-controls {
@@ -24,7 +24,7 @@
 .timeline-play-btn {
   width: 32px;
   height: 32px;
-  background: #fc4c02;
+  background: var(--accent);
   color: white;
   border: none;
   border-radius: 50%;
@@ -38,7 +38,7 @@
 }
 
 .timeline-play-btn:hover {
-  background: #e04400;
+  background: var(--accent-hover);
 }
 
 .timeline-play-btn.muted {
@@ -53,9 +53,9 @@
 .timeline-reset-btn {
   width: 28px;
   height: 28px;
-  background: #252545;
-  color: #999;
-  border: 1px solid #3a3a5a;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-btn);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -66,16 +66,16 @@
 }
 
 .timeline-reset-btn:hover {
-  color: #ddd;
-  border-color: #5a5a8a;
+  color: var(--text);
+  border-color: var(--border-hover);
 }
 
 .timeline-mode-btn {
   width: 28px;
   height: 28px;
-  background: #252545;
-  color: #999;
-  border: 1px solid #3a3a5a;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-btn);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -86,14 +86,14 @@
 }
 
 .timeline-mode-btn:hover {
-  color: #ddd;
-  border-color: #5a5a8a;
+  color: var(--text);
+  border-color: var(--border-hover);
 }
 
 .timeline-mode-btn.active {
-  background: #fc4c02;
+  background: var(--accent);
   color: white;
-  border-color: #fc4c02;
+  border-color: var(--accent);
 }
 
 .timeline-track-container {
@@ -127,7 +127,7 @@
 .timeline-marker-tick {
   width: 1px;
   height: 100%;
-  background: #3a3a5a;
+  background: var(--border-btn);
   position: absolute;
   top: 0;
 }
@@ -136,18 +136,18 @@
   position: absolute;
   bottom: 1px;
   font-size: 0.55rem;
-  color: #666;
+  color: var(--text-faint);
   white-space: nowrap;
   user-select: none;
   transition: color 0.3s;
 }
 
 .timeline-marker.past .timeline-marker-tick {
-  background: #7a7aaa;
+  background: var(--tick-past);
 }
 
 .timeline-marker.past .timeline-marker-label {
-  color: #bbb;
+  color: var(--label-past);
 }
 
 /* Visible track background (behind everything) */
@@ -157,7 +157,7 @@
   left: 1rem;
   right: 1rem;
   height: 6px;
-  background: #2a2a4a;
+  background: var(--track-bar);
   border-radius: 3px;
   z-index: 0;
   transform: translateY(-50%);
@@ -181,7 +181,7 @@
   width: 14px;
   height: 14px;
   background: transparent;
-  border: 2.5px solid #fc4c02;
+  border: 2.5px solid var(--accent);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
@@ -244,9 +244,9 @@
 
 .speed-btn {
   padding: 2px 5px;
-  background: #252545;
-  color: #999;
-  border: 1px solid #3a3a5a;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-btn);
   border-radius: 3px;
   font-size: 0.6rem;
   cursor: pointer;
@@ -255,23 +255,23 @@
 }
 
 .speed-btn:hover {
-  color: #ddd;
-  border-color: #5a5a8a;
+  color: var(--text);
+  border-color: var(--border-hover);
 }
 
 .speed-btn.active {
-  background: #fc4c02;
+  background: var(--accent);
   color: white;
-  border-color: #fc4c02;
+  border-color: var(--accent);
 }
 
 /* Record button */
 .timeline-record-btn {
   width: 22px;
   height: 22px;
-  background: #252545;
-  color: #999;
-  border: 1px solid #3a3a5a;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-btn);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -282,8 +282,8 @@
 }
 
 .timeline-record-btn:hover {
-  color: #ddd;
-  border-color: #5a5a8a;
+  color: var(--text);
+  border-color: var(--border-hover);
 }
 
 .timeline-record-btn.recording {
@@ -302,9 +302,9 @@
 .timeline-showall-btn {
   width: 28px;
   height: 28px;
-  background: #252545;
-  color: #999;
-  border: 1px solid #3a3a5a;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-btn);
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -315,14 +315,14 @@
 }
 
 .timeline-showall-btn:hover {
-  color: #ddd;
-  border-color: #5a5a8a;
+  color: var(--text);
+  border-color: var(--border-hover);
 }
 
 .timeline-showall-btn.active {
-  background: #fc4c02;
+  background: var(--accent);
   color: white;
-  border-color: #fc4c02;
+  border-color: var(--accent);
 }
 
 /* Disabled states */

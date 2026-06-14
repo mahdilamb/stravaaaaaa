@@ -4,6 +4,9 @@ import cookieParser from 'cookie-parser'
 import { authRouter, getValidToken, getVisitorId } from './auth.js'
 import { getAllActivities, getActivitiesPage, getActivityStreams, mapSportType } from './strava.js'
 import { cacheGet, cacheSet, redis } from './cache.js'
+import { registerHeatmapRoutes } from './heatmap.js'
+import { registerTileRoutes } from './tiles.js'
+import { webhookRouter } from './webhook.js'
 
 const app = express()
 const PORT = process.env.SERVER_PORT || 3001
@@ -85,146 +88,9 @@ app.get('/api/activities/:id/streams', async (req, res) => {
   }
 })
 
-// Heatmap cookie setup page — lets dev paste CloudFront cookies for high-res tiles
-app.get('/api/heatmap/setup', (_req, res) => {
-  res.send(`<!DOCTYPE html>
-<html><head><title>Strava Heatmap Setup</title><style>
-body{font-family:system-ui,sans-serif;max-width:600px;margin:40px auto;padding:0 20px;background:#1a1a2e;color:#e0e0e0}
-a{color:#fc4c02}
-input{width:100%;padding:8px;margin:4px 0 12px;background:#16213e;border:1px solid #444;color:#e0e0e0;border-radius:4px;box-sizing:border-box}
-button{background:#fc4c02;color:white;border:none;padding:10px 20px;border-radius:4px;cursor:pointer;font-size:14px}
-button:hover{background:#e04400}
-.step{margin:16px 0;padding:12px;background:#16213e;border-radius:8px}
-code{background:#0d1117;padding:2px 6px;border-radius:3px;font-size:13px}
-.ok{color:#4caf50;font-weight:bold}.err{color:#f44336;font-weight:bold}
-.status{margin:16px 0;padding:12px;border-radius:8px;font-weight:bold}
-.status-ok{background:#1b3a1b;color:#4caf50;border:1px solid #4caf50}
-.status-bad{background:#3a1b1b;color:#f44336;border:1px solid #f44336}
-.status-none{background:#16213e;color:#888;border:1px solid #444}
-.status-loading{background:#16213e;color:#aaa;border:1px solid #444}
-</style></head><body>
-<h2>Strava Heatmap Setup</h2>
-<div id="status" class="status status-loading">Checking cookie status...</div>
-<p>Enable high-resolution heatmap tiles by providing your Strava CloudFront cookies.</p>
-<div class="step"><strong>Step 1:</strong> Open <a href="https://www.strava.com/heatmap" target="_blank">strava.com/heatmap</a> in a new tab (log in if needed)</div>
-<div class="step"><strong>Step 2:</strong> Open DevTools (<code>F12</code>) &rarr; <strong>Application</strong> tab &rarr; <strong>Cookies</strong> &rarr; <code>heatmap-external-a.strava.com</code></div>
-<div class="step"><strong>Step 3:</strong> Copy the three cookie values below:
-<form id="f">
-<label>CloudFront-Key-Pair-Id<input name="keyPairId" required></label>
-<label>CloudFront-Policy<input name="policy" required></label>
-<label>CloudFront-Signature<input name="signature" required></label>
-<button type="submit">Save Cookies</button>
-</form>
-<div id="s"></div>
-</div>
-<script>
-async function checkStatus(){
-  const el=document.getElementById('status');
-  try{
-    const r=await fetch('/api/heatmap/status');const d=await r.json();
-    if(d.stored&&d.valid){el.className='status status-ok';el.textContent='Cookies valid — high-res tiles active'}
-    else if(d.stored){el.className='status status-bad';el.textContent='Cookies expired or invalid — please update below'}
-    else{el.className='status status-none';el.textContent='No cookies stored — using low-res public tiles'}
-    if(d.cookies){
-      document.querySelector('[name=keyPairId]').value=d.cookies.keyPairId||'';
-      document.querySelector('[name=policy]').value=d.cookies.policy||'';
-      document.querySelector('[name=signature]').value=d.cookies.signature||'';
-    }
-  }catch{el.className='status status-none';el.textContent='Could not check status'}
-}
-checkStatus();
-document.getElementById('f').addEventListener('submit',async e=>{
-  e.preventDefault();const d=Object.fromEntries(new FormData(e.target));
-  const el=document.getElementById('s');
-  el.innerHTML='<p style="color:#aaa">Saving and validating...</p>';
-  try{const r=await fetch('/api/heatmap/cookies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
-  if(r.ok){el.innerHTML='';checkStatus()}
-  else{el.innerHTML='<p class="err">Failed to save</p>'}
-  }catch(err){el.innerHTML='<p class="err">'+err.message+'</p>'}
-});
-</script></body></html>`)
-})
-
-app.get('/api/heatmap/status', async (_req, res) => {
-  try {
-    const cf = await cacheGet<{ keyPairId: string; policy: string; signature: string }>('heatmap:cloudfront')
-    if (!cf) {
-      res.json({ stored: false, valid: false, cookies: null })
-      return
-    }
-    // Test with a known-good tile (London, zoom 13 — requires auth)
-    const testUrl = 'https://heatmap-external-a.strava.com/tiles-auth/all/hot/13/4093/2724.png?px=512'
-    const cookie = `CloudFront-Key-Pair-Id=${cf.keyPairId}; CloudFront-Policy=${cf.policy}; CloudFront-Signature=${cf.signature}`
-    const testRes = await fetch(testUrl, { method: 'HEAD', headers: { Cookie: cookie, Referer: 'https://www.strava.com/heatmap' } })
-    res.json({ stored: true, valid: testRes.ok, cookies: cf })
-  } catch {
-    res.json({ stored: false, valid: false, cookies: null })
-  }
-})
-
-app.post('/api/heatmap/cookies', async (req, res) => {
-  try {
-    const { keyPairId, policy, signature } = req.body
-    if (!keyPairId || !policy || !signature) {
-      res.status(400).json({ error: 'All three cookie values required' })
-      return
-    }
-    await cacheSet('heatmap:cloudfront', { keyPairId, policy, signature }, 60 * 60 * 24 * 7)
-    console.log('[heatmap] CloudFront cookies saved — tiles-auth enabled')
-    res.json({ ok: true })
-  } catch {
-    res.status(500).json({ error: 'Failed to save cookies' })
-  }
-})
-
-// Proxy Strava heatmap tiles — uses tiles-auth with CloudFront cookies if available, else public tiles
-const HEATMAP_TYPES = ['all', 'ride', 'run', 'water', 'winter'] as const
-app.get('/api/heatmap/:type/:z/:x/:y.png', async (req, res) => {
-  try {
-    const { type, z, x, y } = req.params
-    const heatType = HEATMAP_TYPES.includes(type as typeof HEATMAP_TYPES[number]) ? type : 'all'
-    const cacheKey = `heatmap:${heatType}:${z}:${x}:${y}`
-    const cached = await cacheGet<string>(cacheKey)
-    if (cached) {
-      res.setHeader('Content-Type', 'image/png')
-      res.setHeader('Cache-Control', 'public, max-age=86400')
-      res.send(Buffer.from(cached, 'base64'))
-      return
-    }
-
-    // Try high-res tiles-auth first if CloudFront cookies are stored
-    const cf = await cacheGet<{ keyPairId: string; policy: string; signature: string }>('heatmap:cloudfront')
-    let buf: Buffer | null = null
-
-    if (cf) {
-      const authUrl = `https://heatmap-external-a.strava.com/tiles-auth/${heatType}/hot/${z}/${x}/${y}.png?px=512`
-      const cookie = `CloudFront-Key-Pair-Id=${cf.keyPairId}; CloudFront-Policy=${cf.policy}; CloudFront-Signature=${cf.signature}`
-      const authRes = await fetch(authUrl, { headers: { Cookie: cookie, Referer: 'https://www.strava.com/heatmap' } })
-      if (authRes.ok) {
-        buf = Buffer.from(await authRes.arrayBuffer())
-      }
-    }
-
-    // Fall back to public tiles (max zoom 12)
-    if (!buf) {
-      const pubUrl = `https://heatmap-external-a.strava.com/tiles/${heatType}/hot/${z}/${x}/${y}.png?px=256`
-      const pubRes = await fetch(pubUrl)
-      if (!pubRes.ok) {
-        // Return 204 (no content) so Leaflet shows empty tile instead of error
-        res.status(204).end()
-        return
-      }
-      buf = Buffer.from(await pubRes.arrayBuffer())
-    }
-
-    await cacheSet(cacheKey, buf.toString('base64'), 86400)
-    res.setHeader('Content-Type', 'image/png')
-    res.setHeader('Cache-Control', 'public, max-age=86400')
-    res.send(buf)
-  } catch {
-    res.status(500).end()
-  }
-})
+registerHeatmapRoutes(app)
+registerTileRoutes(app)
+app.use('/api/webhook', webhookRouter)
 
 // Rate-limit geocoding: sequential with 1.1s delay (Nominatim policy)
 let geocodeQueue: Promise<void> = Promise.resolve()
@@ -428,7 +294,6 @@ app.post('/api/geocode/boundaries', async (req, res) => {
   }
 })
 
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
-  console.log(`[heatmap] Setup: http://localhost:${PORT}/api/heatmap/setup`)
 })
