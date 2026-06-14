@@ -21,7 +21,7 @@ router.get('/', (req: Request, res: Response) => {
   const challenge = req.query['hub.challenge'] as string | undefined
   const token = req.query['hub.verify_token'] as string | undefined
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+  if (mode === 'subscribe' && VERIFY_TOKEN !== '' && token === VERIFY_TOKEN) {
     console.log('[webhook] Subscription validated')
     res.json({ 'hub.challenge': challenge })
     return

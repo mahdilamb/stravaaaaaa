@@ -53,12 +53,7 @@ async function fetchTilePublic(
   }
 }
 
-// --- Fetch using current tier only ---
-
-const TIER_FETCHERS: Record<Tier, typeof fetchTileDirect> = {
-  direct: fetchTileDirect,
-  public: fetchTilePublic,
-}
+// --- Fetch: try current tier, fall back to the other on a per-tile miss ---
 
 async function fetchTile(
   sport: HeatmapSport,
@@ -66,7 +61,12 @@ async function fetchTile(
   x: string,
   y: string,
 ): Promise<Buffer | null> {
-  return TIER_FETCHERS[currentTier](sport, z, x, y)
+  if (currentTier === 'direct') {
+    const buf = await fetchTileDirect(sport, z, x, y)
+    if (buf) return buf
+    return fetchTilePublic(sport, z, x, y)
+  }
+  return fetchTilePublic(sport, z, x, y)
 }
 
 // --- Probe: try direct, fall back to public ---
@@ -123,11 +123,12 @@ export function registerHeatmapRoutes(app: Express): void {
         return
       }
 
-      await cacheSet(cacheKey, buf.toString('base64'), 86400)
       res.setHeader('Content-Type', 'image/png')
       res.setHeader('Cache-Control', 'public, max-age=86400')
       res.setHeader('X-Heatmap-Tier', currentTier)
       res.send(buf)
+
+      cacheSet(cacheKey, buf.toString('base64'), 86400).catch(() => {})
     } catch {
       res.status(500).end()
     }

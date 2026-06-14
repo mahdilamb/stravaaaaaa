@@ -77,11 +77,12 @@ export function registerTileRoutes(app: Express): void {
       }
 
       const buf = Buffer.from(await upstream.arrayBuffer())
-      await cacheSet(cacheKey, buf.toString('base64'), 86400)
 
       res.setHeader('Content-Type', config.contentType)
       res.setHeader('Cache-Control', 'public, max-age=86400')
       res.send(buf)
+
+      cacheSet(cacheKey, buf.toString('base64'), 86400).catch(() => {})
     } catch {
       res.status(500).end()
     }

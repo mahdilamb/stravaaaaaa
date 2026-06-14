@@ -99,10 +99,13 @@ export function Sidebar({ filters, onFiltersChange, loading, loadedCount, activi
   const distanceFilteredActivities = useMemo(() => {
     if (filters.distanceFilter === null) return activities
     const categories = resolveCategories(filters.activityType)
-    if (!categories || categories.length > 1) return activities
-    const cat = categories[0]
     const tolerance = filters.distanceFilter * 0.1
-    return activities.filter(a => a.category === cat && a.distance >= filters.distanceFilter! - tolerance)
+    const minDistance = filters.distanceFilter - tolerance
+    if (!categories || categories.length > 1) {
+      return activities.filter(a => a.distance >= minDistance)
+    }
+    const cat = categories[0]
+    return activities.filter(a => a.category === cat && a.distance >= minDistance)
   }, [activities, filters.distanceFilter, filters.activityType])
 
   return (
