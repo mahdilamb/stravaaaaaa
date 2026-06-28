@@ -11,32 +11,34 @@ import { useColorScheme } from '../contexts/ColorSchemeContext'
 
 export type BorderMode = 'dark' | 'light'
 
-const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; maxZoom?: number }[] = [
+const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; maxZoom?: number; subdomains?: string }[] = [
   {
     key: 'streets',
     label: 'Streets',
-    url: '/api/tiles/osm/{z}/{x}/{y}.png',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    subdomains: 'abc',
   },
   {
     key: 'satellite',
     label: 'Satellite',
-    url: '/api/tiles/satellite/{z}/{x}/{y}.png',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri, Maxar, Earthstar Geographics',
     maxZoom: 19,
   },
   {
     key: 'toner',
     label: 'Land/Water',
-    url: '/api/tiles/terrain/{z}/{x}/{y}.png',
+    url: 'https://tiles.stadiamaps.com/tiles/stamen_terrain_background/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://stamen.com/">Stamen Design</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   },
   {
     key: 'grey',
     label: 'Grey',
-    url: '/api/tiles/carto/{z}/{x}/{y}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 20,
+    subdomains: 'abcd',
   },
   {
     key: 'borders',
@@ -47,8 +49,10 @@ const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; 
   {
     key: 'heatmap',
     label: 'Strava Heatmap',
-    url: '/api/heatmap/{type}/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.strava.com">Strava</a>, &copy; <a href="https://www.naturalearthdata.com/">Natural Earth</a>',
+    url: 'https://heatmap-external-{s}.strava.com/tiles/{type}/hot/{z}/{x}/{y}.png?px=256',
+    attribution: '&copy; <a href="https://www.strava.com">Strava</a>',
+    maxZoom: 12,
+    subdomains: 'abc',
   },
   {
     key: 'none',
@@ -758,7 +762,8 @@ function LayerSwitcher({ active, onChange }: { active: MapLayer; onChange: (l: M
 }
 
 function getBorderTileUrl(mode: BorderMode): string {
-  return `/api/tiles/carto-${mode}/{z}/{x}/{y}.png`
+  const variant = mode === 'dark' ? 'dark_nolabels' : 'light_nolabels'
+  return `https://{s}.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}.png`
 }
 
 const CITY_BORDER_STYLE_DARK: L.PathOptions = {
@@ -804,6 +809,7 @@ function BorderTiles({ cityBoundaries, isHeatmap, borderMode }: { cityBoundaries
           url={tileUrl}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>'
           maxZoom={20}
+          subdomains="abcd"
         />
       </Pane>
       {polyBoundaries.features.length > 0 && (
@@ -849,6 +855,7 @@ function HeatmapLayer({ activityType, attribution, url }: { activityType: Activi
         updateWhenZooming={false}
         maxNativeZoom={12}
         maxZoom={19}
+        subdomains="abc"
       />
     </Pane>
   )
@@ -925,6 +932,7 @@ export function ActivityMap({ activities, allActivities, activityType, distanceF
           keepBuffer={8}
           updateWhenZooming={false}
           maxZoom={activeLayer.maxZoom}
+          subdomains={activeLayer.subdomains ?? 'abc'}
         />
       )}
       {(layer === 'borders' || layer === 'heatmap') && <BorderTiles cityBoundaries={cityBoundaries} isHeatmap={layer === 'heatmap'} borderMode={borderMode} />}

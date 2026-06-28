@@ -16,6 +16,7 @@ import type { BorderMode } from './Map'
 import { Sidebar } from './Sidebar'
 import { ActivityMap } from './Map'
 import { TimelineSlider } from './TimelineSlider'
+import { Settings } from './Settings'
 
 const DEFAULT_FILTERS: FilterState = {
   activityType: 'all',
@@ -35,7 +36,8 @@ function getInitialState(): AppState {
 const initialState = getInitialState()
 
 export function App() {
-  const { auth, loading: authLoading, login, logout } = useAuth()
+  const { auth, loading: authLoading, login, logout, tokens, needsSetup } = useAuth()
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [filters, setFilters] = useState<FilterState>(initialState.filters)
   const [mapLayer, setMapLayer] = useState<MapLayer>(initialState.layer ?? 'borders')
   const [colorScheme, setColorScheme] = useState<ColorSchemeName>(initialState.scheme ?? 'strava')
@@ -56,7 +58,7 @@ export function App() {
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number; ts: number; bounds?: [[number, number], [number, number]] } | null>(null)
   const suppressHashUpdate = useRef(false)
   const mapContainerRef = useRef<HTMLDivElement>(null)
-  const { activities, loading: activitiesLoading, loadedCount } = useActivities(filters)
+  const { activities, loading: activitiesLoading, loadedCount } = useActivities(filters, tokens)
 
   const sorted = useMemo(() => sortByDate(activities), [activities])
   const filtered = useMemo(() => applyFilters(sorted, filters), [sorted, filters])
@@ -182,6 +184,10 @@ export function App() {
     )
   }
 
+  if (needsSetup) {
+    return <Settings onSave={() => window.location.reload()} />
+  }
+
   if (!auth.authenticated) {
     return (
       <div className="login-screen">
@@ -190,12 +196,17 @@ export function App() {
         <button className="login-btn" onClick={login}>
           Connect with Strava
         </button>
+        <button className="login-settings-btn" onClick={() => setSettingsOpen(true)}>
+          Settings
+        </button>
+        {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} onSave={() => setSettingsOpen(false)} />}
       </div>
     )
   }
 
   return (
     <ColorSchemeContext.Provider value={schemeValue}>
+      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
       <div className={`app-layout ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
         <Sidebar
           filters={filters}
@@ -209,6 +220,7 @@ export function App() {
           animationCity={animationCity}
           onCityClick={handleCityClick}
           onLogout={logout}
+          onSettings={() => setSettingsOpen(true)}
           athleteName={auth.athlete ? `${auth.athlete.firstname} ${auth.athlete.lastname}` : undefined}
           collapsed={!sidebarOpen}
           onToggle={() => setSidebarOpen(v => !v)}
