@@ -206,7 +206,7 @@ export function Sidebar({ filters, onFiltersChange, loading, loadedCount, activi
             rel="noopener noreferrer"
           >
             <img
-              src="https://static.strava.com/images/api/api_logo_pwrdBy_orangeDark.svg"
+              src={`${import.meta.env.BASE_URL}strava-powered.svg`}
               alt="Powered by Strava"
               className="strava-logo"
             />

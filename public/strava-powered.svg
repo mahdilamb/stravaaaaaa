@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="40" viewBox="0 0 160 40">
+  <rect width="160" height="40" rx="4" fill="#FC4C02"/>
+  <text x="12" y="15" font-family="Arial,Helvetica,sans-serif" font-size="9" fill="white" opacity="0.85" letter-spacing="0.5">Powered by</text>
+  <text x="12" y="31" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="bold" fill="white" letter-spacing="1">STRAVA</text>
+</svg>
