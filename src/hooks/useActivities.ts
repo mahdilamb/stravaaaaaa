@@ -54,15 +54,9 @@ function mapActivity(a: Record<string, unknown>): Activity {
   }
 }
 
-async function fetchPage(
-  token: string,
-  page: number,
-  after?: number,
-  before?: number,
-): Promise<Record<string, unknown>[]> {
+async function fetchPage(token: string, page: number, after?: number): Promise<Record<string, unknown>[]> {
   const params = new URLSearchParams({ per_page: '200', page: String(page) })
-  if (after) params.set('after', String(after))
-  if (before) params.set('before', String(before))
+  if (after !== undefined) params.set('after', String(after))
   const res = await fetch(`${STRAVA_API}/athlete/activities?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -70,26 +64,12 @@ async function fetchPage(
   return res.json() as Promise<Record<string, unknown>[]>
 }
 
-// IDB key helpers
+const fetchKey = (athleteId: number) => `${athleteId}:lastFetch`
 const idsKey = (athleteId: number) => `${athleteId}:ids`
 const actKey = (athleteId: number, id: number) => `${athleteId}:${id}`
 
-function applyDateFilter(
-  raw: Record<string, unknown>[],
-  after?: number,
-  before?: number,
-): Record<string, unknown>[] {
-  if (!after && !before) return raw
-  return raw.filter(a => {
-    const ts = Math.floor(new Date(a.start_date as string).getTime() / 1000)
-    if (after && ts < after) return false
-    if (before && ts > before) return false
-    return true
-  })
-}
-
 export function useActivities(filters: FilterState, tokens: StravaTokens | null) {
-  const [activities, setActivities] = useState<Activity[]>([])
+  const [rawActivities, setRawActivities] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(false)
   const [loadedCount, setLoadedCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +81,7 @@ export function useActivities(filters: FilterState, tokens: StravaTokens | null)
 
   const athleteId = tokens?.athlete?.id ?? null
 
+  // Sync with Strava only when the athlete changes — date range and type are filtered locally
   useEffect(() => {
     if (!athleteId) return
     let cancelled = false
@@ -108,92 +89,61 @@ export function useActivities(filters: FilterState, tokens: StravaTokens | null)
     setLoading(true)
     setError(null)
     setLoadedCount(0)
-    setActivities([])
-
-    const after = filters.dateRange.start
-      ? Math.floor(filters.dateRange.start.getTime() / 1000)
-      : undefined
-    const before = filters.dateRange.end
-      ? Math.floor(filters.dateRange.end.getTime() / 1000)
-      : undefined
+    setRawActivities([])
 
     ;(async () => {
       try {
         const token = await getValidToken()
         if (!token) throw new Error('Not authenticated')
 
-        // Load the ordered ID list and build a lookup Set
+        // Record the start time before fetching so any activity created during
+        // this window is picked up on the next sync
+        const fetchStart = Math.floor(Date.now() / 1000)
+        const lastFetch = await idbGet<number>('activities', fetchKey(athleteId))
         const cachedIds = await idbGet<number[]>('activities', idsKey(athleteId)) ?? []
-        const cachedIdSet = new Set(cachedIds)
 
-        // Fetch pages from Strava until we hit an activity ID already in the cache
+        // Fetch only activities created after the last sync
         const freshRaw: Record<string, unknown>[] = []
-        let cacheHitIndex: number | null = null // position of first hit in cachedIds[]
         let page = 1
-
-        outer: while (!cancelled) {
-          const pageRaw = await fetchPage(token, page, after, before)
+        while (!cancelled) {
+          const pageRaw = await fetchPage(token, page, lastFetch ?? undefined)
           if (cancelled) return
-
-          for (const activity of pageRaw) {
-            const id = activity.id as number
-            if (cachedIdSet.has(id)) {
-              cacheHitIndex = cachedIds.indexOf(id)
-              break outer
-            }
-            freshRaw.push(activity)
-          }
-
-          // Show fresh activities as they arrive
-          const freshMapped = freshRaw
-            .map(mapActivity)
-            .filter(a => a.coordinates.length > 0)
-            .filter(a => serverType === 'all' || a.category === serverType)
-          if (!cancelled) {
-            setActivities(freshMapped)
-            setLoadedCount(freshMapped.length)
-          }
-
-          if (pageRaw.length < 200) break  // last page, no more to fetch
+          freshRaw.push(...pageRaw)
+          if (!cancelled) setLoadedCount(freshRaw.length)
+          if (pageRaw.length < 200) break
           page++
         }
 
         if (cancelled) return
 
-        // Load cached remainder from IDB (from hit point to end of IDs list)
-        let cachedRaw: Record<string, unknown>[] = []
-        if (cacheHitIndex !== null) {
-          const remainingIds = cachedIds.slice(cacheHitIndex)
-          const batch = await idbGetBatch<Record<string, unknown>>(
-            'activities',
-            remainingIds.map(id => actKey(athleteId, id)),
-          )
-          cachedRaw = applyDateFilter(
-            batch.filter((a): a is Record<string, unknown> => a !== null),
-            after,
-            before,
-          )
-        }
-
-        if (cancelled) return
-
-        // Combine and display
-        const allRaw = [...freshRaw, ...cachedRaw]
-        const allMapped = allRaw
-          .map(mapActivity)
-          .filter(a => a.coordinates.length > 0)
-          .filter(a => serverType === 'all' || a.category === serverType)
-        setActivities(allMapped)
-        setLoadedCount(allMapped.length)
-
-        // Persist fresh activities to IDB and update the IDs list
+        // Persist fresh activities and update the ID list
         if (freshRaw.length > 0) {
           for (const a of freshRaw) {
             await idbSet('activities', actKey(athleteId, a.id as number), a)
           }
           const freshIds = freshRaw.map(a => a.id as number)
-          await idbSet('activities', idsKey(athleteId), [...freshIds, ...cachedIds])
+          const freshIdSet = new Set(freshIds)
+          await idbSet('activities', idsKey(athleteId), [
+            ...freshIds,
+            ...cachedIds.filter(id => !freshIdSet.has(id)),
+          ])
         }
+
+        // Load the cached tail (everything not just fetched)
+        const freshIdSet = new Set(freshRaw.map(a => a.id as number))
+        const cachedKeys = cachedIds
+          .filter(id => !freshIdSet.has(id))
+          .map(id => actKey(athleteId, id))
+        const batch = await idbGetBatch<Record<string, unknown>>('activities', cachedKeys)
+        const cachedRaw = batch.filter((a): a is Record<string, unknown> => a !== null)
+
+        if (cancelled) return
+
+        await idbSet('activities', fetchKey(athleteId), fetchStart)
+
+        const allRaw = [...freshRaw, ...cachedRaw]
+        setRawActivities(allRaw)
+        setLoadedCount(allRaw.length)
       } catch (err: unknown) {
         if (!cancelled) setError((err as Error).message)
       } finally {
@@ -202,7 +152,27 @@ export function useActivities(filters: FilterState, tokens: StravaTokens | null)
     })()
 
     return () => { cancelled = true }
-  }, [serverType, athleteId, filters.dateRange.start, filters.dateRange.end]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [athleteId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply date range and activity type filters locally — no extra API call needed
+  const activities = useMemo(() => {
+    const after = filters.dateRange.start
+      ? Math.floor(filters.dateRange.start.getTime() / 1000)
+      : undefined
+    const before = filters.dateRange.end
+      ? Math.floor(filters.dateRange.end.getTime() / 1000)
+      : undefined
+    return rawActivities
+      .filter(a => {
+        const ts = Math.floor(new Date(a.start_date as string).getTime() / 1000)
+        if (after !== undefined && ts < after) return false
+        if (before !== undefined && ts > before) return false
+        return true
+      })
+      .map(mapActivity)
+      .filter(a => a.coordinates.length > 0)
+      .filter(a => serverType === 'all' || a.category === serverType)
+  }, [rawActivities, filters.dateRange.start, filters.dateRange.end, serverType])
 
   return { activities, loading, loadedCount, error }
 }
