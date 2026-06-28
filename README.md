@@ -13,74 +13,68 @@ Visualize your Strava activities on an interactive map with filtering, color-cod
 - **Date filtering** — Year/quarter/month chips with custom range inputs
 - **City clustering** — Activities grouped by geocoded city, with boundary polygons on borders layer
 - **Map layers** — Streets, Satellite, Terrain, Grey, Borders, Strava Heatmap, None
-- **Strava Heatmap tiles** — Public low-res or authenticated high-res via CloudFront cookies
 - **URL hash state** — Filters, map position, speed, mode, layer, and scheme persisted in the URL
-- **NDJSON streaming** — Activities stream to the client page-by-page for progressive loading
+- **IndexedDB cache** — Activities cached by ID; subsequent loads fetch from Strava only until a known activity ID is found, then serve the rest locally
 
 ## Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React 19, TypeScript, Vite, Leaflet / react-leaflet |
-| Backend | Express 5, TypeScript (tsx), ioredis |
-| Cache | Redis 7 (Docker, AOF persistence) |
+| Auth | Strava OAuth 2.0 — client-side code exchange, tokens in `localStorage` |
+| Cache | IndexedDB — activities, geocodes, city boundaries |
 | Maps | OpenStreetMap, Stadia, CARTO, Esri, Natural Earth borders |
+| Geocoding | Nominatim (direct, client-side throttle) |
+| Deployment | GitHub Pages via GitHub Actions |
 | Testing | Vitest |
 | UI Dev | Storybook 10 |
 | CI | GitHub Actions (typecheck, test, build, storybook) |
 
-## Quick Start
+## Setup
 
-### Prerequisites
+### 1. Create a Strava API application
 
-- Node.js 20+
-- Docker (for Redis)
-- A [Strava API application](https://www.strava.com/settings/api) (Client ID + Secret)
+Go to [strava.com/settings/api](https://www.strava.com/settings/api) and create an app.
 
-### Setup
+Set the **Authorization Callback Domain** to your deployment domain:
+- Local dev: `localhost`
+- GitHub Pages: your Pages domain (e.g. `mahdilamb.github.io`)
+
+Note the **Client ID** and **Client Secret**.
+
+### 2. Run locally
 
 ```bash
-# Install dependencies
 yarn install
-
-# Start Redis
-docker compose up -d redis
-
-# Configure environment
-cp .env.backend.example .env.backend
-# Edit .env.backend with your STRAVA_CLIENT_SECRET
-
-# Start dev servers (frontend :5173, backend :3001)
 yarn dev
 ```
 
-Open http://localhost:5173, connect with Strava, and your activities will load.
+Open http://localhost:53609 (or the port Vite prints). On first load you'll see a setup screen — enter your Client ID and Client Secret. Credentials are stored in `localStorage` and sent only to Strava's OAuth endpoint.
 
-### Docker (production)
+### 3. Deploy to GitHub Pages
 
-```bash
-docker compose up --build
-```
+1. Enable GitHub Pages in your repo settings → **Pages → Source: GitHub Actions**
+2. Push to `main` — the [deploy workflow](.github/workflows/deploy.yml) builds and publishes automatically
 
-Runs Redis, backend, and nginx-fronted frontend on port 5173.
+## How the cache works
 
-## Environment Variables
+Activities are stored in IndexedDB keyed by activity ID, with a master sorted ID list (`{athleteId}:ids`).
 
-See `.env.backend.example`:
+On each load the app fetches pages from Strava **until it finds an activity ID already in the cache**, then loads the remaining activities locally. This means:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `STRAVA_CLIENT_ID` | — | Strava app client ID |
-| `STRAVA_CLIENT_SECRET` | — | Strava app client secret |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
-| `SERVER_PORT` | `3001` | Backend port |
-| `FRONTEND_URL` | `http://localhost:5173` | CORS origin |
+- **First load** — all pages fetched from Strava, everything cached
+- **After a new run** — only page 1 (or however many pages contain new activities) fetched; rest served from IndexedDB
+- **No new activities** — only one Strava API call needed
+
+Geocoding results (city names + boundary polygons) are cached in IndexedDB for 30 days with a client-side 1.1 s/request throttle respecting Nominatim's ToS.
+
+To clear the cache, open Settings (gear icon in the sidebar) → **Clear cache**.
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `yarn dev` | Start frontend + backend concurrently |
+| `yarn dev` | Start Vite dev server |
 | `yarn build` | TypeScript compile + Vite production build |
 | `yarn test` | Run Vitest test suite |
 | `yarn typecheck` | TypeScript type checking |
@@ -90,18 +84,16 @@ See `.env.backend.example`:
 
 ```
 src/
-  components/   App, Map, Sidebar, ActivityTypeSelector,
-                DateRangeSelector, DistanceFilter, TimelineSlider, CitySelector
-  hooks/        useAuth, useActivities, useTimeline, useGeocodeCache, useActivityStreams
+  components/   App, Map, Sidebar, Settings,
+                ActivityTypeSelector, DateRangeSelector,
+                DistanceFilter, TimelineSlider, CitySelector
+  hooks/        useAuth, useActivities, useTimeline,
+                useGeocodeCache, useActivityStreams
+  lib/          idb.ts (IndexedDB wrapper), stravaAuth.ts (OAuth + token refresh)
   contexts/     ColorSchemeContext
   types/        Activity, FilterState, ActivityCategory
   utils/        colors, constants, filters, hash, polyline
   styles/       App.css, Sidebar.css, Timeline.css, Map.css
-server/
-  index.ts      Express routes (activities, geocoding, heatmap proxy)
-  auth.ts       Strava OAuth 2.0 (cookie sessions, token refresh)
-  strava.ts     Strava API client with pagination + Redis cache
-  cache.ts      Redis wrapper
 ```
 
 ## License

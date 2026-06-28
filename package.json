@@ -24,24 +24,24 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^5.0.1",
+    "@storybook/addon-a11y": "^10.2.15",
+    "@storybook/addon-docs": "^10.2.15",
+    "@storybook/addon-onboarding": "^10.2.15",
+    "@storybook/addon-vitest": "^10.2.15",
+    "@storybook/react-vite": "^10.2.15",
     "@types/leaflet": "^1.9.21",
     "@types/mapbox__polyline": "^1.0.5",
     "@types/node": "^25.3.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/browser": "4.1.9",
+    "@vitest/coverage-v8": "4.1.9",
+    "playwright": "^1.58.2",
+    "storybook": "^10.2.15",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^3.2.4",
-    "storybook": "^10.2.15",
-    "@storybook/react-vite": "^10.2.15",
-    "@chromatic-com/storybook": "^5.0.1",
-    "@storybook/addon-vitest": "^10.2.15",
-    "@storybook/addon-a11y": "^10.2.15",
-    "@storybook/addon-docs": "^10.2.15",
-    "@storybook/addon-onboarding": "^10.2.15",
-    "playwright": "^1.58.2",
-    "@vitest/browser": "3.2.4",
-    "@vitest/coverage-v8": "3.2.4"
+    "vitest": "^4.1.9"
   }
 }
