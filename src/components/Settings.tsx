@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getConfig, saveConfig } from '../lib/stravaAuth'
 import { idbClear } from '../lib/idb'
+import { getCartoKey, saveCartoKey } from '../lib/cartoKey'
 
 interface Props {
   onClose?: () => void
@@ -11,12 +12,14 @@ export function Settings({ onClose, onSave }: Props) {
   const cfg = getConfig()
   const [clientId, setClientId] = useState(cfg.clientId)
   const [clientSecret, setClientSecret] = useState(cfg.clientSecret)
+  const [cartoKey, setCartoKey] = useState(getCartoKey)
   const [saved, setSaved] = useState(false)
   const [clearing, setClearing] = useState(false)
   const [cleared, setCleared] = useState(false)
 
   function handleSave() {
     saveConfig({ clientId: clientId.trim(), clientSecret: clientSecret.trim() })
+    saveCartoKey(cartoKey.trim())
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     onSave?.()
@@ -80,9 +83,22 @@ export function Settings({ onClose, onSave }: Props) {
           />
         </label>
 
+        <label className="settings-label">
+          Carto Basemap API Key <span className="settings-optional">(optional)</span>
+          <input
+            className="settings-input"
+            type="password"
+            value={cartoKey}
+            onChange={e => setCartoKey(e.target.value)}
+            placeholder="Carto API key"
+            autoComplete="off"
+          />
+        </label>
+
         <p className="settings-security-note">
-          Credentials are stored in your browser's localStorage and never sent anywhere except
-          directly to Strava's OAuth endpoint.
+          Credentials and API keys are stored in your browser's localStorage. Strava credentials are
+          never sent anywhere except directly to Strava's OAuth endpoint; the Carto key is only used
+          to load basemap tiles.
         </p>
 
         <div className="settings-actions">
