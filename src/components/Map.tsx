@@ -3,15 +3,16 @@ import { createPortal } from 'react-dom'
 import { MapContainer, TileLayer, GeoJSON, Polyline, CircleMarker, Pane, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { LatLngExpression } from 'leaflet'
-import type { Activity, ActivityCategory, ActivityFilterType } from '../types'
+import type { Activity, ActivityFilterType } from '../types'
 import type { AnimationMode } from '../hooks/useTimeline'
 import type { MapLayer } from '../utils/hash'
 import { getActivityColor } from '../utils/colors'
 import { useColorScheme } from '../contexts/ColorSchemeContext'
+import { useCartoKey, cartoTileUrl } from '../lib/cartoKey'
 
 export type BorderMode = 'dark' | 'light'
 
-const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; maxZoom?: number; subdomains?: string }[] = [
+const LAYERS: { key: MapLayer; label: string; url: string; carto?: string; attribution: string; maxZoom?: number; subdomains?: string }[] = [
   {
     key: 'streets',
     label: 'Streets',
@@ -29,7 +30,8 @@ const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; 
   {
     key: 'toner',
     label: 'Land/Water',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png',
+    url: '', // resolved at runtime via cartoTileUrl (API key from settings)
+    carto: 'voyager_nolabels',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 20,
     subdomains: 'abcd',
@@ -37,7 +39,8 @@ const LAYERS: { key: MapLayer; label: string; url: string; attribution: string; 
   {
     key: 'grey',
     label: 'Grey',
-    url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png',
+    url: '', // resolved at runtime via cartoTileUrl (API key from settings)
+    carto: 'light_nolabels',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 20,
     subdomains: 'abcd',
@@ -763,9 +766,9 @@ function LayerSwitcher({ active, onChange }: { active: MapLayer; onChange: (l: M
   )
 }
 
-function getBorderTileUrl(mode: BorderMode): string {
+function getBorderTileUrl(mode: BorderMode, cartoKey: string): string {
   const variant = mode === 'dark' ? 'dark_nolabels' : 'light_nolabels'
-  return `https://{s}.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}.png`
+  return cartoTileUrl(variant, cartoKey)
 }
 
 const CITY_BORDER_STYLE_DARK: L.PathOptions = {
@@ -801,7 +804,8 @@ function BorderTiles({ cityBoundaries, isHeatmap, borderMode }: { cityBoundaries
   }), [cityBoundaries])
 
   const cityStyle = isHeatmap ? CITY_BORDER_STYLE_HEATMAP : (borderMode === 'dark' ? CITY_BORDER_STYLE_DARK : CITY_BORDER_STYLE_LIGHT)
-  const tileUrl = getBorderTileUrl(isHeatmap ? 'dark' : borderMode)
+  const cartoKey = useCartoKey()
+  const tileUrl = getBorderTileUrl(isHeatmap ? 'dark' : borderMode, cartoKey)
 
   return (
     <>
@@ -915,6 +919,8 @@ function getWeight(index: number, total: number, isAnimating: boolean, zoom: num
 
 export function ActivityMap({ activities, allActivities, activityType, distanceFilter, isAnimating, isPlaying, currentIndex, activityProgress, trailMode, mode, layer, borderMode, geocodeCache, cityBoundaries, flyTarget, onLayerChange, onViewChange, onFlyStart, onFlyEnd, onPause, initialView, previewActivity }: Props) {
   const activeLayer = LAYERS.find(l => l.key === layer)!
+  const cartoKey = useCartoKey()
+  const activeUrl = activeLayer.carto ? cartoTileUrl(activeLayer.carto, cartoKey) : activeLayer.url
 
   const clusters = useMemo(() => clusterByCity(allActivities, geocodeCache), [allActivities, geocodeCache])
 
@@ -926,11 +932,11 @@ export function ActivityMap({ activities, allActivities, activityType, distanceF
       zoomControl={false}
       className="map-container"
     >
-      {activeLayer.url && layer !== 'heatmap' && (
+      {activeUrl && layer !== 'heatmap' && (
         <TileLayer
           key={activeLayer.key}
           attribution={activeLayer.attribution}
-          url={activeLayer.url}
+          url={activeUrl}
           keepBuffer={8}
           updateWhenZooming={false}
           maxZoom={activeLayer.maxZoom}
@@ -950,7 +956,7 @@ export function ActivityMap({ activities, allActivities, activityType, distanceF
         allActivities={allActivities}
         isAnimating={isAnimating}
         mode={mode}
-        tileUrl={activeLayer.url}
+        tileUrl={activeUrl}
         clusters={clusters}
         flyTarget={flyTarget}
         onViewChange={onViewChange}
